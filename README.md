@@ -6,7 +6,7 @@ A python library for overloading functions on type and signature.
 Overview
 --------
 
-Sure, *args and **kwargs are great. But sometimes you need more- you need to
+Sure, `*args` and `**kwargs` are great. But sometimes you need more- you need to
 have genuinely distinct behavior based on the types or layout of your arguments.
 `dispatch` allows you to do just that. By attaching type annotations to your
 functions, and decorating them with dispatch, you can have a group of functions
