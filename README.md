@@ -16,9 +16,8 @@ chains, or `len(args)`, or `arg in kwargs`.
 Examples
 --------
 
-```python
 Basic Usage:
-
+```python
 from dispatch import dispatch
 
 @dispatch
@@ -47,7 +46,6 @@ assert greet(None) == 'Hello, mysterious stranger!'
 assert greet(1, 10) == 'Hello, int and guest!'
 assert greet('a', 'b') == 'Hello, pair of mysterious strangers!'
 ```
-
 
 Overload on number of arguments to make automatic decorators:
 
