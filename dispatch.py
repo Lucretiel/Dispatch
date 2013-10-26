@@ -14,8 +14,8 @@ class DispatchError(TypeError):
 
 class DispatchGroup():
     '''
-    A Dispatch object manages the type dispatch for a group of functions. when
-    a function in the DispatchGroup is called, it attempts to bind the
+    A DispatchGroup object manages the type dispatch for a group of functions.
+    when a function in the DispatchGroup is called, it attempts to bind the
     arguments to the type signature of each grouped function in the order they
     were added to the group. It calls the first matching function, and raises
     a DispatchError (a subclass of TypeError) if no function matched.
