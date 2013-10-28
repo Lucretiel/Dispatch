@@ -119,6 +119,11 @@ class DispatchGroup():
     def __call__(*args, **kwargs):
         return args[0].execute_dispatch(args[1:], kwargs)
 
+    @property
+    def registered_functions(self):
+        return [callee[1] for callee in self.callees]
+
+
 def dispatch(func):
     '''
     Create a new dispatch on func. Bind additional dispatches with

@@ -206,3 +206,20 @@ class TestDispatch(unittest.TestCase):
         self.assertEqual(evens_only(0), 0)
         self.assertEqual(evens_only(10), 5)
         self.assertRaises(ValueError, evens_only, 5)
+
+    def test_registered_functions(self):
+        def func1(x: int):
+            pass
+
+        def func2(x: list):
+            pass
+
+        def func3(x: str):
+            pass
+
+        self.dispatch.dispatch(func1)
+        self.dispatch.dispatch(func2)
+        self.dispatch.dispatch(func3)
+
+        self.assertEqual(self.dispatch.registered_functions,
+            [func1, func2, func3])
