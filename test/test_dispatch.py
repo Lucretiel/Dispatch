@@ -176,3 +176,33 @@ class TestDispatch(unittest.TestCase):
         self.assertEqual(func(Bar()), 'Bar')
         self.assertEqual(func(Foo()), 'Foo')
 
+    def test_value_match(self):
+        #Classic freshman recursions
+        @self.dispatch.dispatch
+        def length_of_list(x: []):
+            return 0
+
+        @self.dispatch.dispatch
+        def length_of_list(x: list):
+            return length_of_list(x[1:]) + 1
+
+        self.assertEqual(length_of_list([1, 2, 3]), 3)
+        self.assertEqual(length_of_list([]), 0)
+        self.assertRaises(DispatchError, length_of_list, ())
+
+    def test_predicate_match(self):
+        is_even = lambda x: x % 2 == 0
+        is_odd = lambda x: x % 2 == 1
+
+        #print for even, raise for odd
+        @self.dispatch.dispatch
+        def evens_only(x: is_even):
+            return x / 2
+
+        @self.dispatch.dispatch
+        def evens_only(x: is_odd):
+            raise ValueError
+
+        self.assertEqual(evens_only(0), 0)
+        self.assertEqual(evens_only(10), 5)
+        self.assertRaises(ValueError, evens_only, 5)
