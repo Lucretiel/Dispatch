@@ -81,28 +81,12 @@ class DispatchGroup():
         param_matchers = list(cls._make_all_matchers(sig.parameters.items()))
         return (partial(cls.bind_args, sig, param_matchers), func)
 
-    def _make_wrapper(self, func):
-        '''
-        Create a wrapper for a target function, which when called executes a
-        dispatch call. Also adds the 'dispatch' and 'dispatch_first' decorators
-        as attributes which allow additional overloads to be bound from the
-        function.
-        '''
-        #TODO: consider pros and cons of returning self.execute_dispatch (or a
-        #wrapper) instead of defining a new function.
-        @wraps(func)
-        def dispatcher(*args, **kwargs):
-            return self.execute_dispatch(args, kwargs)
-        dispatcher.dispatch = self.dispatch
-        dispatcher.dispatch_first = self.dispatch_first
-        return dispatcher
-
     def dispatch(self, func):
         '''
         Adds the decorated function to this dispatch.
         '''
         self.callees.append(self._make_dispatch(func))
-        return self._make_wrapper(func)
+        return self
 
     def dispatch_first(self, func):
         '''
@@ -111,7 +95,7 @@ class DispatchGroup():
         to be executed before default functionality.
         '''
         self.callees.appendleft(self._make_dispatch(func))
-        return self._make_wrapper(func)
+        return self
 
     def execute_dispatch(self, args, kwargs):
         '''
@@ -131,6 +115,9 @@ class DispatchGroup():
 
         #Nothing was able to bind. Error.
         raise DispatchError(args, kwargs, self)
+
+    def __call__(*args, **kwargs):
+        return args[0].execute_dispatch(args[1:], kwargs)
 
 def dispatch(func):
     '''
