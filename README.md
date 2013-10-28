@@ -13,39 +13,151 @@ functions, and decorating them with dispatch, you can have a group of functions
 and automatically determine the correct one to call. No more `elif isinstance`
 chains, or `len(args)`, or `arg in kwargs`.
 
+
+Usage
+-----
+
+To use dispatch, create a `DispatchGroup` object. This object collects all the
+functions that should be tried when executing a dispatch call.
+
+```python
+import dispatch
+greetings = dispatch.DispatchGroup()
+```
+
+To add a function to the dispatch group, decorate it with the `dispatch` member.
+
+```python
+@greetings.dispatch
+def greet(x: int):
+    print("Hello, int!")
+
+@greetings.dispatch
+def greet(x: str):
+    print("Hello, str!")
+
+greet(1)  # Prints "Hello, int!"
+greet('string')  # Prints "Hello, str!"
+greet([1, 2, 3])  # Raises DispatchError, a subclass of TypeError
+```
+
+The argument annotation determines what function is called. Each function
+registered to the group is tried, in order, to have arguments bound to its
+parameter signature. The first one that matches is called. If none match, a
+DispatchError is raised.
+
+Not every argument needs to have an annotation. Use a completely unannotated
+function to create a base case, which will be called if nothing else matches:
+
+```python
+@greetings.dispatch
+def greet(x):
+    print("Hello, mysterious stranger!")
+
+greet([1, 2, 3])  # Prints "Hello, mysterious stranger!"
+greet(1)  # Still prints "Hello, int!"
+```
+
+Be careful, though. Functions are tried in the order that the are decorated, so
+adding additional overloads after a base case won't do any good:
+
+```python
+@greetings.dispatch
+def greet(x: list):
+    print("Hello, list!")
+
+greet([1, 2, 3])  # still prints "Hello, mysterious stranger"
+```
+
+To get around this, you can use the dispatch_first decorator, which adds the
+function to the front of the list of functions to try:
+
+```python
+@greetings.dispatch_first
+def greet(x: list):
+    print("Hello, list!")
+
+greet([1, 2, 3])  # now prints "Hello, list!"
+```
+
+Other usage notes
+-----------------
+
+It is not nessesary to explicitly create a DispatchGroup object. Instead, you
+can use the global function `dispatch` to create a new `DispatchGroup`
+implicitly. The decorated functions will automatically have the `dispatch` and
+`dispatch_first` attributes attached to them, so that more overloads can be
+added.
+
+```python
+@dispatch.dispatch
+def half(x: int):
+    return x / 2
+
+@half.dispatch
+def half(x: str):
+    return x[0:len(x)/2]
+```
+
+This applies when using an explicit `DispatchGroup` as well. Because everything
+has the attributes attached to it, it also isn't necessary to give all functions
+the same name, or to give them a different name than the DispatchGroup.
+
+In addition to matching by type, you can match by number of arguments:
+
+```python
+@dispatch.dispatch
+def nargs(a):
+    return 1
+
+@nargs.dispatch
+def nargs(a, b):
+    return 2
+
+@nargs.dispatch
+def nargs(a, b, c):
+    return 3
+
+assert nargs(1) == 1
+assert nargs(5, 4, 3) == 3
+assert nargs(2, 4) == 2
+#Using less than 1 or more than 3 will raise a DispatchError
+```
+
+Or by predicate:
+
+```python
+def is_odd(x): return x % 2 == 1
+def is_even(x): return x % 2 == 0
+
+@dispatch.dispatch
+def evens_only(x: is_even):
+    return x
+
+@evens_only.dispatch(x: is_odd)
+    raise ValueError(x)
+```
+
+Or by value comparison:
+
+```python
+#Classic freshman recursion
+
+@dispatch.dispatch
+def fib(n: 0):
+    return 1
+
+@fib.dispatch
+def fib(n: 1)
+    return 1
+
+@fib.dispatch
+def fib(n):
+    return fib(n-1) + fib(n-2)
+````
+
 Examples
 --------
-
-Basic Usage:
-```python
-from dispatch import dispatch
-
-@dispatch
-def greet(x: int):
-    return 'Hello, {} the int!'.format(x)
-
-@greet.dispatch
-def greet(x: list):
-    return 'Hello everyone!'
-
-@greet.dispatch
-def greet(x):
-    return 'Hello, mysterious stranger!'
-
-@greet.dispatch
-def greet(x: int, y):
-    return 'Hello, int and guest!'
-
-@greet.dispatch
-def greet(x, y):
-    return 'Hello, pair of mysterious strangers!'
-
-assert greet(1) == 'Hello, 1 the int!'
-assert greet([1, 2, 3]) == 'Hello everyone!'
-assert greet(None) == 'Hello, mysterious stranger!'
-assert greet(1, 10) == 'Hello, int and guest!'
-assert greet('a', 'b') == 'Hello, pair of mysterious strangers!'
-```
 
 Overload on number of arguments to make automatic decorators:
 
