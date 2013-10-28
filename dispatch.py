@@ -7,8 +7,6 @@ from inspect import signature, Parameter
 from functools import wraps, partial
 from collections import deque
 
-untyped = Parameter.empty
-
 class DispatchError(TypeError):
     pass
 
@@ -31,7 +29,7 @@ class DispatchGroup():
         self.callees = deque()
 
     @staticmethod
-    def bind_args(sig, param_types, args, kwargs):
+    def bind_args(sig, param_matchers, args, kwargs):
         '''
         Attempt to bind the args to the type signature. First try to just bind
         to the signature, then ensure that all arguments match the parameter
@@ -40,11 +38,36 @@ class DispatchGroup():
         #Bind to signature. May throw its own TypeError
         bound = sig.bind(*args, **kwargs)
 
-        if not all(isinstance(bound.arguments[param_name], param_type)
-                for param_name, param_type in param_types):
+        if not all(param_matcher(bound.arguments[param_name])
+                for param_name, param_matcher in param_matchers):
             raise TypeError
 
         return bound
+
+    @staticmethod
+    def _make_param_matcher(annotation):
+        '''
+        For a given annotation, return a function which, when called on a
+        function argument, returns true if that argument matches the annotation.
+        If the annotation is a type, it calls isinstance; if it's a callable,
+        it calls it on the object; otherwise, it performs a value comparison.
+        '''
+        if isinstance(annotation, type):
+            return (lambda x: isinstance(x, annotation))
+        elif callable(annotation):
+            return (lambda x: annotation(x))
+        else:
+            return (lambda x: x == annotation)
+
+    @classmethod
+    def _make_all_matchers(cls, parameters):
+        '''
+        For every parameter, create a matcher if the parameter has an
+        annotation.
+        '''
+        for name, param in parameters:
+            if param.annotation is not Parameter.empty:
+                yield name, cls._make_param_matcher(param.annotation)
 
     @classmethod
     def _make_dispatch(cls, func):
@@ -55,10 +78,8 @@ class DispatchGroup():
         TypeError
         '''
         sig = signature(func)
-        param_types = [(param_name, param.annotation)
-            for param_name, param in sig.parameters.items()
-            if param.annotation is not untyped]
-        return (partial(cls.bind_args, sig, param_types), func)
+        param_matchers = list(cls._make_all_matchers(sig.parameters.items()))
+        return (partial(cls.bind_args, sig, param_matchers), func)
 
     def _make_wrapper(self, func):
         '''
