@@ -101,7 +101,7 @@ def half(x: str):
 
 This applies when using an explicit `DispatchGroup` as well. Because everything
 has the attributes attached to it, it also isn't necessary to give all functions
-the same name, or to give them a different name than the DispatchGroup.
+the same name, or to give them a different name than the `DispatchGroup`.
 
 In addition to matching by type, you can match by number of arguments:
 
@@ -134,7 +134,8 @@ def is_even(x): return x % 2 == 0
 def evens_only(x: is_even):
     return x
 
-@evens_only.dispatch(x: is_odd)
+@evens_only.dispatch
+def evens_only(x: is_odd)
     raise ValueError(x)
 ```
 
