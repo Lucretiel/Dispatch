@@ -29,7 +29,7 @@ class DispatchGroup():
         self.callees = deque()
 
     @staticmethod
-    def bind_args(sig, param_matchers, args, kwargs):
+    def _bind_args(sig, param_matchers, args, kwargs):
         '''
         Attempt to bind the args to the type signature. First try to just bind
         to the signature, then ensure that all arguments match the parameter
@@ -79,14 +79,23 @@ class DispatchGroup():
         '''
         sig = signature(func)
         param_matchers = list(cls._make_all_matchers(sig.parameters.items()))
-        return (partial(cls.bind_args, sig, param_matchers), func)
+        return (partial(cls._bind_args, sig, param_matchers), func)
+
+    def _make_wrapper(self, func):
+        @wraps(func)
+        def executor(*args, **kwargs):
+            return self.execute_dispatch(args, kwargs)
+        executor.dispatch = self.dispatch
+        executor.dispatch_first = self.dispatch_first
+        return executor
+
 
     def dispatch(self, func):
         '''
         Adds the decorated function to this dispatch.
         '''
         self.callees.append(self._make_dispatch(func))
-        return self
+        return self._make_wrapper(func)
 
     def dispatch_first(self, func):
         '''
@@ -95,7 +104,7 @@ class DispatchGroup():
         to be executed before default functionality.
         '''
         self.callees.appendleft(self._make_dispatch(func))
-        return self
+        return self._make_wrapper(func)
 
     def execute_dispatch(self, args, kwargs):
         '''
