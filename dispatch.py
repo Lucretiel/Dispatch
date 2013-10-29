@@ -82,13 +82,17 @@ class DispatchGroup():
         return (partial(cls._bind_args, sig, param_matchers), func)
 
     def _make_wrapper(self, func):
+        '''
+        Makes a wrapper function that executes a dispatch call for func. The
+        wrapper has the dispatch and dispatch_first attributes, so that
+        additional overloads can be added to the group.
+        '''
         @wraps(func)
         def executor(*args, **kwargs):
             return self.execute_dispatch(args, kwargs)
         executor.dispatch = self.dispatch
         executor.dispatch_first = self.dispatch_first
         return executor
-
 
     def dispatch(self, func):
         '''
