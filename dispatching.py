@@ -1,5 +1,5 @@
 '''
-Dispatch provides methods to define multiple call signatures for the
+Dispatching provides methods to define multiple call signatures for the
 same function.
 '''
 
@@ -89,7 +89,7 @@ class DispatchGroup():
         '''
         @wraps(func)
         def executor(*args, **kwargs):
-            return self.execute_dispatch(args, kwargs)
+            return self.execute(args, kwargs)
         executor.dispatch = self.dispatch
         executor.dispatch_first = self.dispatch_first
         return executor
@@ -110,7 +110,7 @@ class DispatchGroup():
         self.callees.appendleft(self._make_dispatch(func))
         return self._make_wrapper(func)
 
-    def execute_dispatch(self, args, kwargs):
+    def execute(self, args, kwargs):
         '''
         Dispatch a call. Call the first function whose type signature matches
         the arguemts.
@@ -130,7 +130,7 @@ class DispatchGroup():
         raise DispatchError(args, kwargs, self)
 
     def __call__(*args, **kwargs):
-        return args[0].execute_dispatch(args[1:], kwargs)
+        return args[0].execute(args[1:], kwargs)
 
     @property
     def registered_functions(self):

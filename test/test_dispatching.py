@@ -1,10 +1,10 @@
 import unittest
-import dispatch
-from dispatch import DispatchError
+import dispatching
+from dispatching import DispatchError
 
-class TestDispatch(unittest.TestCase):
+class TestDispatching(unittest.TestCase):
     def setUp(self):
-        self.dispatch = dispatch.DispatchGroup()
+        self.dispatch = dispatching.DispatchGroup()
 
     def test_dispatch_error(self):
         @self.dispatch.dispatch
@@ -138,7 +138,7 @@ class TestDispatch(unittest.TestCase):
         self.assertRaises(DispatchError, func, 1.5)
 
     def test_attribute(self):
-        @dispatch.dispatch
+        @dispatching.dispatch
         def func(x: int):
             return 'int'
 
