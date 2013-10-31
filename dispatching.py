@@ -87,12 +87,39 @@ class DispatchGroup():
         wrapper has the dispatch and dispatch_first attributes, so that
         additional overloads can be added to the group.
         '''
+
+        #TODO: consider using a class to make attribute forwarding easier.
+        #TODO: consider using simply another DispatchGroup, with self.callees
+        # assigned by reference to the original callees.
         @wraps(func)
         def executor(*args, **kwargs):
             return self.execute(args, kwargs)
         executor.dispatch = self.dispatch
         executor.dispatch_first = self.dispatch_first
+        executor.func = func
+        executor.lookup = self.lookup
         return executor
+
+    def _lookup_internal(self, args, kwargs):
+        '''
+        Lookup the function that will be called with a given set of arguments.
+        Returns the function and the appropriate argument bindings, or raises
+        DispatchError
+        '''
+        for bind_args, callee in self.callees:
+            try:
+                #bind to the signature and types. Raises TypeError on failure
+                bound = bind_args(args, kwargs)
+            except TypeError:
+                #TypeError: failed to bind arguments. Try the next dispatch
+                continue
+
+            #All the parameters matched. Return the function and args
+            return callee, bound
+
+        else:
+            #Nothing was able to bind. Error.
+            raise DispatchError(args, kwargs, self)
 
     def dispatch(self, func):
         '''
@@ -110,31 +137,34 @@ class DispatchGroup():
         self.callees.appendleft(self._make_dispatch(func))
         return self._make_wrapper(func)
 
+    def lookup_explicit(self, args, kwargs):
+        '''
+        Get the function that will be called with a given set of arguments, or
+        raises TypeError
+        '''
+        return self._lookup_internal(args, kwargs)[0]
+
+    def lookup(*args, **kwargs):
+        '''
+        Get the function that will be called with a given set of arguments, or
+        raises TypeError.
+        '''
+        return args[0].lookup_explicit(args[1:], kwargs)
+
     def execute(self, args, kwargs):
         '''
         Dispatch a call. Call the first function whose type signature matches
         the arguemts.
         '''
-        for bind_args, callee in self.callees:
-            try:
-                #bind to the signature and types. Raises TypeError on failure
-                bound = bind_args(args, kwargs)
-            except TypeError:
-                #TypeError: failed to bind arguments. Try the next dispatch
-                continue
-
-            #All the parameters matched. Call the function.
-            return callee(*bound.args, **bound.kwargs)
-
-        #Nothing was able to bind. Error.
-        raise DispatchError(args, kwargs, self)
-
-    def __call__(*args, **kwargs):
-        return args[0].execute(args[1:], kwargs)
+        callee, bound = self._lookup_internal(args, kwargs)
+        return callee(*bound.args, **bound.kwargs)
 
     @property
     def registered_functions(self):
         return [callee[1] for callee in self.callees]
+
+    def __call__(*args, **kwargs):
+        return args[0].execute(args[1:], kwargs)
 
 
 def dispatch(func):

@@ -207,7 +207,25 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(evens_only(10), 5)
         self.assertRaises(ValueError, evens_only, 5)
 
-    def test_registered_functions(self):
+    def test_self_kwarg(self):
+        @self.dispatch.dispatch
+        def func(x, y, self: int):
+            return x, y, self + 10
+
+        @self.dispatch.dispatch
+        def func(x, y, self: str):
+            return x, y, self
+
+        self.assertEqual(
+            self.dispatch(y=1, self=2, x=3),
+            (3, 1, 12))
+        self.assertEqual(
+            self.dispatch(self='a', x='b', y='c'),
+            ('b', 'c', 'a'))
+
+class TestDispatchIntrospection(unittest.TestCase):
+    def setUp(self):
+        self.dispatch = dispatching.DispatchGroup()
         def func1(x: int):
             pass
 
@@ -221,5 +239,43 @@ class TestDispatching(unittest.TestCase):
         self.dispatch.dispatch(func2)
         self.dispatch.dispatch(func3)
 
-        self.assertEqual(self.dispatch.registered_functions,
-            [func1, func2, func3])
+        self.funcs = [func1, func2, func3]
+
+    def test_registered_functions(self):
+        #Use a set. No guarentee about order.
+        self.assertEqual(set(self.dispatch.registered_functions),
+            set(self.funcs))
+
+    def test_lookup_explicit(self):
+        self.assertIs(
+            self.dispatch.lookup_explicit([1], {}),
+            self.funcs[0])
+        self.assertIs(
+            self.dispatch.lookup_explicit([[1, 2, 3]], {}),
+            self.funcs[1])
+        self.assertIs(
+            self.dispatch.lookup_explicit(['hello'], {}),
+            self.funcs[2])
+        self.assertIs(
+            self.dispatch.lookup_explicit([], {'x': 1}),
+            self.funcs[0])
+
+        self.assertRaises(DispatchError,
+            self.dispatch.lookup_explicit, [1.5], {})
+
+    def test_lookup(self):
+        self.assertIs(
+            self.dispatch.lookup(1),
+            self.funcs[0])
+        self.assertIs(
+            self.dispatch.lookup([1, 2, 3]),
+            self.funcs[1])
+        self.assertIs(
+            self.dispatch.lookup('hello'),
+            self.funcs[2])
+        self.assertIs(
+            self.dispatch.lookup(x=1),
+            self.funcs[0])
+
+        self.assertRaises(DispatchError,
+            self.dispatch.lookup, 1.5)
