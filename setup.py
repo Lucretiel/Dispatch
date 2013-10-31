@@ -1,18 +1,24 @@
 from setuptools import setup
 
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst', 'markdown')
+except (ImportError, FileNotFoundError, RuntimeError):
+    #ImportError: pypandoc failed to import
+    #FileNotFoundError: couldn't launch pandoc
+    #RuntimeError: failed to convert
+    long_description = open('README.md').read()
+
 setup(
     name="Dispatching",
     version="1.0.1",
     py_modules=['dispatching',],
     test_suite='test',
     platforms='any',
-    package_data={
-        '': ['README.md', 'LICENSE',],
-    },
 
     author="Nathan West",
     description="A library for overloading python functions",
-    long_description=open('README.md').read(),
+    long_description=long_description,
     license="LGPLv3",
     url="https://github.com/Lucretiel/Dispatch",
 
