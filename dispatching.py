@@ -100,27 +100,6 @@ class DispatchGroup():
         executor.lookup = self.lookup
         return executor
 
-    def _lookup_internal(self, args, kwargs):
-        '''
-        Lookup the function that will be called with a given set of arguments.
-        Returns the function and the appropriate argument bindings, or raises
-        DispatchError
-        '''
-        for bind_args, callee in self.callees:
-            try:
-                #bind to the signature and types. Raises TypeError on failure
-                bound = bind_args(args, kwargs)
-            except TypeError:
-                #TypeError: failed to bind arguments. Try the next dispatch
-                continue
-
-            #All the parameters matched. Return the function and args
-            return callee, bound
-
-        else:
-            #Nothing was able to bind. Error.
-            raise DispatchError(args, kwargs, self)
-
     def dispatch(self, func):
         '''
         Adds the decorated function to this dispatch.
@@ -139,15 +118,29 @@ class DispatchGroup():
 
     def lookup_explicit(self, args, kwargs):
         '''
-        Get the function that will be called with a given set of arguments, or
-        raises TypeError
+        Lookup the function that will be called with a given set of arguments,
+        or raise DispatchError. Requires explicit tuple/dict grouping of
+        arguments (see DispatchGroup.lookup for a function-like interface).
         '''
-        return self._lookup_internal(args, kwargs)[0]
+        for bind_args, callee in self.callees:
+            try:
+                #bind to the signature and types. Raises TypeError on failure
+                bind_args(args, kwargs)
+            except TypeError:
+                #TypeError: failed to bind arguments. Try the next dispatch
+                continue
+
+            #All the parameters matched. Return the function and args
+            return callee
+
+        else:
+            #Nothing was able to bind. Error.
+            raise DispatchError(args, kwargs, self)
 
     def lookup(*args, **kwargs):
         '''
         Get the function that will be called with a given set of arguments, or
-        raises TypeError.
+        raises DispatchError. Can be called with
         '''
         return args[0].lookup_explicit(args[1:], kwargs)
 
@@ -156,14 +149,20 @@ class DispatchGroup():
         Dispatch a call. Call the first function whose type signature matches
         the arguemts.
         '''
-        callee, bound = self._lookup_internal(args, kwargs)
-        return callee(*bound.args, **bound.kwargs)
+        return self.lookup_explicit(args, kwargs)(*args, **kwargs)
 
     @property
     def registered_functions(self):
+        '''
+        Get a list of registered functions, in the order that they will be
+        checked.
+        '''
         return [callee[1] for callee in self.callees]
 
     def __call__(*args, **kwargs):
+        '''
+        Function-like syntax to execute a dispatched call.
+        '''
         return args[0].execute(args[1:], kwargs)
 
 
