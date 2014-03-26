@@ -7,6 +7,9 @@ class TestDispatching(unittest.TestCase):
         self.dispatch = dispatching.DispatchGroup()
 
     def test_dispatch_error(self):
+        '''
+        Call dispatch function with no match raises a DispatchError
+        '''
         @self.dispatch.dispatch
         def func(x: int):
             return 'int', x
@@ -20,6 +23,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, 4.5)
 
     def test_dispatch_noerror(self):
+        '''
+        Call dispatch function with arbitrary argument as last possible
+        '''
         @self.dispatch.dispatch
         def func(x: int):
             return 'int', x
@@ -33,6 +39,9 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func([]), ('other', []))
 
     def test_partial_dispatch(self):
+        '''
+        Call dispatch function with only some arguments annotated
+        '''
         @self.dispatch.dispatch
         def func(x: int, y: int):
             return ('int', 'int')
@@ -51,6 +60,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, 'hello', 'world')
 
     def test_bad_dispatch_order(self):
+        '''
+        First matching dispatch function is called
+        '''
         @self.dispatch.dispatch
         def func(x: str):
             return 'str'
@@ -68,6 +80,9 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func(1), 'other')
 
     def test_custom_type(self):
+        '''
+        Dispatch matching works with custom types
+        '''
         class Foo:
             pass
 
@@ -87,6 +102,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, 1)
 
     def test_inheritance(self):
+        '''
+        Dispatch matching works with inheritance
+        '''
         class Foo:
             pass
 
@@ -102,6 +120,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, 1)
 
     def test_inversion_pattern(self):
+        '''
+        Test argument swapping pattern
+        '''
         @self.dispatch.dispatch
         def func(x: int, y):
             return 'int'
@@ -121,8 +142,7 @@ class TestDispatching(unittest.TestCase):
 
     def test_raises(self):
         '''
-        Ensure that TypeErrors raised by the dispatched function aren't
-        caught
+        Ensure that TypeErrors raised by the dispatched function aren't caught
         '''
         @self.dispatch.dispatch
         def func(x: int):
@@ -142,6 +162,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, 1.5)
 
     def test_attribute(self):
+        '''
+        Test that dispatching.dispatch and func.dispatch work
+        '''
         @dispatching.dispatch
         def func(x: int):
             return 'int'
@@ -155,6 +178,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, func, [])
 
     def test_dispatch_first(self):
+        '''
+        Test the dispatch_first function
+        '''
         class Foo:
             pass
 
@@ -181,6 +207,9 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func(Foo()), 'Foo')
 
     def test_value_match(self):
+        '''
+        Test matching on value
+        '''
         #Classic freshman recursions
         @self.dispatch.dispatch
         def length_of_list(x: []):
@@ -195,6 +224,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(DispatchError, length_of_list, ())
 
     def test_predicate_match(self):
+        '''
+        Test matching on generic predicate
+        '''
         is_even = lambda x: x % 2 == 0
         is_odd = lambda x: x % 2 == 1
 
@@ -212,6 +244,9 @@ class TestDispatching(unittest.TestCase):
         self.assertRaises(ValueError, evens_only, 5)
 
     def test_self_kwarg(self):
+        '''
+        Test kwarg matching
+        '''
         @self.dispatch.dispatch
         def func(x, y, self: int):
             return x, y, self + 10
@@ -227,9 +262,9 @@ class TestDispatching(unittest.TestCase):
             self.dispatch(self='a', x='b', y='c'),
             ('b', 'c', 'a'))
 
-    def test_varargs_all(self):
+    def test_varargs_predicate(self):
         '''
-        Check that annotations on *args effect the whole tuple of args
+        Check that predicate annotations on *args effect the whole tuple of args
         '''
         def is_length(n):
             return lambda x: len(x) == n
@@ -246,21 +281,49 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func(1, 2), 2)
         self.assertRaises(DispatchError, func, 1, 2, 3)
 
-    def test_varargs_each(self):
+    def test_varargs_type(self):
         '''
-        Test the all_match function
+        Check that using a type with *args checks each argument
         '''
+
         @self.dispatch.dispatch
-        def combine(*args: dispatching.all_match(int)):
+        def combine(*args: int):
             return sum(args)
 
         @self.dispatch.dispatch
-        def combine(*args: dispatching.all_match(str)):
+        def combine(*args: str):
             return ''.join(args)
 
         self.assertEqual(combine(1, 2, 3), 6)
-        self.assertEqual(combine('Hello ', 'World'), "Hello World")
+        self.assertEqual(combine("Hello ", "World"), "Hello World")
         self.assertRaises(DispatchError, combine, 1, "x")
+
+    def test_varargs_each(self):
+        '''
+        Check applying a predicate to each argument of *args with all_match
+        '''
+        def is_even(x):
+            return x % 2 == 0
+
+        def is_odd(x):
+            return not is_even(x)
+
+        @self.dispatch.dispatch
+        def func(*args: dispatching.each(is_even)):
+            return "All even"
+
+        @self.dispatch.dispatch
+        def func(*args: dispatching.each(is_odd)):
+            return "All odd"
+
+        @self.dispatch.dispatch
+        def func(*args):
+            return "Mix"
+
+        self.assertEqual(func(2,4,6), "All even")
+        self.assertEqual(func(1,3,5), "All odd")
+        self.assertEqual(func(1,2,3), "Mix")
+
 
 class TestDispatchIntrospection(unittest.TestCase):
     def setUp(self):
@@ -281,11 +344,15 @@ class TestDispatchIntrospection(unittest.TestCase):
         self.funcs = [func1, func2, func3]
 
     def test_registered_functions(self):
-        #Use a set. No guarentee about order.
-        self.assertEqual(set(self.dispatch.registered_functions),
-            set(self.funcs))
+        '''
+        Test getting the list of registered functions
+        '''
+        self.assertEqual(self.dispatch.registered_functions, self.funcs)
 
     def test_lookup_explicit(self):
+        '''
+        Lookup the matching function with an args list and kwargs dict
+        '''
         self.assertIs(
             self.dispatch.lookup_explicit([1], {}),
             self.funcs[0])
@@ -303,6 +370,9 @@ class TestDispatchIntrospection(unittest.TestCase):
             self.dispatch.lookup_explicit, [1.5], {})
 
     def test_lookup(self):
+        '''
+        Lookup the matching function based on function signature
+        '''
         self.assertIs(
             self.dispatch.lookup(1),
             self.funcs[0])
