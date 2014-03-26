@@ -11,7 +11,7 @@ except (ImportError, FileNotFoundError, RuntimeError):
 
 setup(
     name="Dispatching",
-    version="1.2.0",
+    version="1.3.0",
     py_modules=['dispatching',],
     test_suite='test',
     platforms='any',
