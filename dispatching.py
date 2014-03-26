@@ -7,8 +7,10 @@ from inspect import signature, Parameter
 from functools import wraps, partial
 from collections import deque
 
+
 class DispatchError(TypeError):
     pass
+
 
 class DispatchGroup():
     '''
@@ -55,7 +57,7 @@ class DispatchGroup():
         if isinstance(annotation, type):
             return (lambda x: isinstance(x, annotation))
         elif callable(annotation):
-            return (lambda x: annotation(x))
+            return annotation
         else:
             return (lambda x: x == annotation)
 
@@ -74,12 +76,12 @@ class DispatchGroup():
         '''
         Create a dispatch pair for func- a tuple of (bind_args, func), where
         bind_args is a function that, when called with (args, kwargs), attempts
-        to bind those args to the type signature of func, or else return a
+        to bind those args to the type signature of func, or else raise a
         TypeError
         '''
         sig = signature(func)
-        param_matchers = list(cls._make_all_matchers(sig.parameters.items()))
-        return (partial(cls._bind_args, sig, param_matchers), func)
+        matchers = tuple(cls._make_all_matchers(sig.parameters.items()))
+        return (partial(cls._bind_args, sig, matchers), func)
 
     def _make_wrapper(self, func):
         '''
@@ -172,3 +174,8 @@ def dispatch(func):
     @func.dispatch
     '''
     return DispatchGroup().dispatch(func)
+
+
+def all_match(annotation):
+    matcher = DispatchGroup._make_param_matcher(annotation)
+    return lambda args: all(matcher(arg) for arg in args)

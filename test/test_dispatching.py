@@ -120,6 +120,10 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func('a', 'a'), 'other')
 
     def test_raises(self):
+        '''
+        Ensure that TypeErrors raised by the dispatched function aren't
+        caught
+        '''
         @self.dispatch.dispatch
         def func(x: int):
             return 'int'
@@ -222,6 +226,41 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(
             self.dispatch(self='a', x='b', y='c'),
             ('b', 'c', 'a'))
+
+    def test_varargs_all(self):
+        '''
+        Check that annotations on *args effect the whole tuple of args
+        '''
+        def is_length(n):
+            return lambda x: len(x) == n
+
+        @self.dispatch.dispatch
+        def func(*args: is_length(1)):
+            return 1
+
+        @self.dispatch.dispatch
+        def func(*args: is_length(2)):
+            return 2
+
+        self.assertEqual(func(1), 1)
+        self.assertEqual(func(1, 2), 2)
+        self.assertRaises(DispatchError, func, 1, 2, 3)
+
+    def test_varargs_each(self):
+        '''
+        Test the all_match function
+        '''
+        @self.dispatch.dispatch
+        def combine(*args: dispatching.all_match(int)):
+            return sum(args)
+
+        @self.dispatch.dispatch
+        def combine(*args: dispatching.all_match(str)):
+            return ''.join(args)
+
+        self.assertEqual(combine(1, 2, 3), 6)
+        self.assertEqual(combine('Hello ', 'World'), "Hello World")
+        self.assertRaises(DispatchError, combine, 1, "x")
 
 class TestDispatchIntrospection(unittest.TestCase):
     def setUp(self):
