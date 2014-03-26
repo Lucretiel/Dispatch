@@ -324,6 +324,23 @@ class TestDispatching(unittest.TestCase):
         self.assertEqual(func(1,3,5), "All odd")
         self.assertEqual(func(1,2,3), "Mix")
 
+    def test_multiple_types(self):
+        '''
+        Check that a tuple of types may be matched against
+        '''
+
+        @self.dispatch.dispatch
+        def func(x: (int, str)):
+            return 'int or str'
+
+        @self.dispatch.dispatch
+        def func(x):
+            return 'something else'
+
+        self.assertEqual(func(1), 'int or str')
+        self.assertEqual(func('x'), 'int or str')
+        self.assertEqual(func([1]), 'something else')
+
 
 class TestDispatchIntrospection(unittest.TestCase):
     def setUp(self):

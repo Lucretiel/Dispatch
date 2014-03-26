@@ -56,7 +56,9 @@ class DispatchGroup():
         If the parameter is variadic (*args) and the annotation is a type, the
         matcher will attempt to match each of the arguments in args
         '''
-        if isinstance(annotation, type):
+        if isinstance(annotation, type) or (
+                isinstance(annotation, tuple) and
+                all(isinstance(a, type) for a in annotation)):
             if kind is Parameter.VAR_POSITIONAL:
                 return (lambda args: all(isinstance(x, annotation) for x in args))
             else:
